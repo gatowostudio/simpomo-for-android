@@ -1,0 +1,30 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif;
+  color: #e8e8e8;
+  background-color: #1c1c1e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  /* 全画面アプリ: 端の引っ張りスクロール（rubber-band）を抑止。 */
+  overscroll-behavior: none;
+}
+
+body {
+  /* タイマー表示が画面外へはみ出さないよう固定。設定ビューは内側で自前スクロールする。 */
+  overflow: hidden;
+}
+
+#app {
+  /* 動的ビューポート（dvh）でアドレスバー有無に追従。未対応環境は 100% にフォールバック。 */
+  height: 100%;
+  height: 100dvh;
+}

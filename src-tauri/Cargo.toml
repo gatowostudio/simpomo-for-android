@@ -1,0 +1,32 @@
+[package]
+name = "simpomo"
+version = "0.1.0"
+description = "シンプルで軽量なポモドーロタイマー（Android 版）"
+authors = ["gatowostudio"]
+edition = "2021"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "simpomo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Android 版はトレイ/最前面/ウィンドウ位置を持たないため、tray-icon 等のデスクトップ専用機能は外す。
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+# 設定・統計の永続化（settings.json / stats.json の入出力）に使う。
+serde_json = "1"
+# 「更新を確認」でリリースページを既定ブラウザ（Android のブラウザ）で開くために使う。
+tauri-plugin-opener = "2"
+# フェーズ境界を Android 通知で知らせる（#20。Android 対応プラグイン）。
+tauri-plugin-notification = "2"
+
+# デスクトップ版から外したプラグイン（モバイルでは無意味）:
+#   tauri-plugin-window-state    … ウィンドウ位置/サイズ永続（全画面のため不要）
+#   tauri-plugin-single-instance … 二重起動防止（モバイルに概念なし）
+#   tauri-plugin-autostart       … OS スタートアップ登録（Android では扱わない）

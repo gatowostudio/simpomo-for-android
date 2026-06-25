@@ -1,0 +1,69 @@
+# =========================================
+#  simpomo-for-android (.gitignore)
+#  Tauri v2 (Rust) mobile / Android + Svelte (Vite/TypeScript)
+# =========================================
+
+# --- Node / Frontend ---
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+dist/
+build/
+out/
+.svelte-kit/
+.vite/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+
+# --- Rust / Tauri backend (src-tauri) ---
+src-tauri/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock.bak
+
+# --- Tauri generated mobile projects ---
+# NOTE: Tauri は `src-tauri/gen/android` を `tauri android init` で再生成できるため既定では無視する。
+#       ただし AndroidManifest.xml（landscape 固定・全画面・権限）等を手で編集して保持したくなったら、
+#       `src-tauri/gen/android` の必要ファイルだけ追跡対象に戻すこと（spec / development.md 参照）。
+src-tauri/gen/
+
+# --- Android / Gradle ---
+.gradle/
+local.properties
+.cxx/
+*.apk
+*.aab
+
+# --- Logs ---
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Testing & coverage ---
+coverage/
+.nyc_output/
+
+# --- Secrets / signing keys (NEVER commit — public repo) ---
+.env
+.env.*
+.env.local
+.env.*.local
+*.pem
+*.key
+# Android release signing keystore & its credentials
+*.jks
+*.keystore
+keystore.properties
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Claude / project-init local scaffolding (keep out of public repo) ---
+.claude/

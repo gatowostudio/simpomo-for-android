@@ -1,0 +1,5 @@
+# pnpm は依存のビルドスクリプト(postinstall 等)を既定でブロックする。
+# esbuild は vite が使うネイティブバイナリで信頼できるため、ここで明示的にビルドを許可する
+# (allowBuilds は pnpm が自動生成する許可リスト)。
+allowBuilds:
+  esbuild: true
