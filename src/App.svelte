@@ -12,6 +12,7 @@
   import { playSound, soundsForEvents, type SoundId } from "./lib/sounds";
   import { setBgm, stopBgm, type BgmId } from "./lib/bgm";
   import { unlockAudioOnUserGesture } from "./lib/audio";
+  import { setKeepScreenOn } from "./lib/wakelock";
   import { notifyIfHidden, ensureNotificationPermission } from "./lib/notify";
   import { textColorFor } from "./lib/color";
   import Settings from "./Settings.svelte";
@@ -112,7 +113,15 @@
     return () => {
       disposed = true;
       unlisteners.forEach((u) => u());
+      // 画面常時ONの解放（hot-reload / アンマウント時に lock を残さない）。
+      setKeepScreenOn(false);
     };
+  });
+
+  // タイマー稼働中だけ画面を消灯させない（#2 / keep-screen-on）。isRunning は $derived の真偽値なので、
+  // 毎秒の snapshot 更新では再実行されず、稼働⇄停止の縁でのみ wake lock を取得/解放する（edge 駆動）。
+  $effect(() => {
+    setKeepScreenOn(isRunning);
   });
 
   // フォーカス（作業フェーズ・稼働中）のみ BGM を流す。休憩/一時停止/停止では止める。

@@ -65,24 +65,28 @@
 - アーキ判断（なぜ Tauri 流用か・単一画面化） → `docs/decisions/0001-android-stack-and-reuse.md`
 - 環境構築・ビルド・リリース手順 → `docs/development.md`
 - 状態の所在・設定ビュー方式・計時モデル → `docs/decisions/0002-state-ownership-and-timing.md`
+- desktop とのコア重複の同期戦略・ドリフト検査 → `docs/decisions/0003-core-duplication-sync.md` ＋ `scripts/check-core-drift.ps1`
 - 設計判断の履歴 → `docs/decisions/`
 - 元アプリの実装の正本 → `C:\Dev\simpomo`（Svelte: `src/`、Rust コア: `src-tauri/src/`）。流用元はここを参照。
 - ドメイン用語が増えたら → `docs/glossary.md` を作って記録する（現状は不要なため未作成）。
 
 ### ⚠️ 2リポジトリ間のコア重複（保守時の必読事項）
-本リポの以下は デスクトップ版 `C:\Dev\simpomo` と**バイト一致のコピー**: `src-tauri/src/timer.rs`,
-`src-tauri/src/stats.rs`, `src/lib/{sounds,bgm,notify,timer,stats,audio,color}.ts`。
-`settings.rs` / `settings.ts` は desktop 専用フィールド削除ぶんだけ分岐済み。
+本リポは デスクトップ版 `C:\Dev\simpomo` とコアを共有する。共有ファイルは「ミラー（一致を維持）」と
+「意図的に分岐」の 2 クラスに分かれる（`timer.rs`/`notify.ts`/`settings.*` は移植で分岐済み＝「全部バイト一致」
+ではない）。**どのファイルがどちらかは再列挙しない**——正本は `scripts/check-core-drift.ps1`、根拠は
+`docs/decisions/0003-core-duplication-sync.md` を見る（ここに列挙すると三重管理でまたドリフトするため）。
+
 **コア（タイマー状態機械・統計・音生成・Rust↔TS の同期契約）を直すときは両リポに反映が必要**。
 片方だけ直すと、`#[serde(default)]` により不整合が例外を出さず静かに進行する（android だけ新設定が効かない 等）。
-リポ間ドリフトを検出する仕組みは無い。将来の見直しトリガー: コア変更が頻発するなら共有 crate 化 or
-desktop リポへの Android ターゲット統合（1リポ化）を再検討（ADR-0001 / 0002 参照）。
+push 前に **`pwsh scripts/check-core-drift.ps1`** を回す（`git config core.hooksPath scripts/hooks` で
+pre-push 自動化可）。将来の見直しトリガー: コア変更が頻発するなら共有 crate 化 or 1リポ化を再検討（ADR-0003）。
 
 ## Commands
 - フロント依存: `pnpm install`
 - 型チェック: `pnpm check`（svelte-check。検証済み: 0 errors）
 - フロントビルド: `pnpm build`（`dist/` を生成。`tauri build`/`generate_context!` が参照）
-- Rust テスト: `cargo test --manifest-path src-tauri/Cargo.toml`（検証済み: 39 passed）
+- Rust テスト: `cargo test --manifest-path src-tauri/Cargo.toml`（検証済み: 52 passed）
+- コア重複ドリフト検査: `pwsh scripts/check-core-drift.ps1`（push 前。要ローカル `C:\Dev\simpomo`）
 - Android 実機/エミュ起動: `pnpm tauri android dev` ※要 Android toolchain（未導入の環境では不可）
 - Android ビルド: `pnpm tauri android build`（APK/AAB を生成）※同上
 

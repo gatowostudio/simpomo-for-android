@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Opt-in pre-push hook: run the core-duplication drift check (ADR-0003 / issue #7) before pushing.
+# Install once with:   git config core.hooksPath scripts/hooks
+#
+# Policy:
+#   drift found (exit 1)        -> block the push (so mirror drift can't land silently)
+#   desktop repo absent (exit 2)-> warn and allow (CI / machines without the sibling repo)
+#   no PowerShell available     -> warn and allow
+set -u
+
+repo_root="$(git rev-parse --show-toplevel)"
+script="$repo_root/scripts/check-core-drift.ps1"
+
+if [ ! -f "$script" ]; then
+  exit 0
+fi
+
+if command -v pwsh >/dev/null 2>&1; then
+  ps="pwsh"
+elif command -v powershell >/dev/null 2>&1; then
+  ps="powershell"
+else
+  echo "pre-push: no PowerShell found; skipping core-drift check (see ADR-0003)." >&2
+  exit 0
+fi
+
+"$ps" -NoProfile -ExecutionPolicy Bypass -File "$script"
+status=$?
+
+if [ "$status" -eq 1 ]; then
+  echo "pre-push: BLOCKED. Mirror files drifted from the desktop repo. Reconcile, then push (ADR-0003)." >&2
+  exit 1
+fi
+if [ "$status" -eq 2 ]; then
+  echo "pre-push: desktop repo not found; skipped core-drift check (set -DesktopRepo or ignore)." >&2
+fi
+exit 0

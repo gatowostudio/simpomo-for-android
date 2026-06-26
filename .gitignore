@@ -23,11 +23,19 @@ src-tauri/target/
 *.pdb
 Cargo.lock.bak
 
-# --- Tauri generated mobile projects ---
-# NOTE: Tauri は `src-tauri/gen/android` を `tauri android init` で再生成できるため既定では無視する。
-#       ただし AndroidManifest.xml（landscape 固定・全画面・権限）等を手で編集して保持したくなったら、
-#       `src-tauri/gen/android` の必要ファイルだけ追跡対象に戻すこと（spec / development.md 参照）。
-src-tauri/gen/
+# --- Tauri generated mobile project (src-tauri/gen) ---
+# gen/android（Gradle プロジェクト）は**追跡する**。landscape 固定・immersive 全画面・署名設定の手当てを
+# ビルドに乗せ、CI から脆い生成テンプレ patch を無くすため（ADR-0003 / development.md / android-release.yml）。
+# 追跡しないのは「生成し直せる成果物・ローカル設定・スキーマ」だけ（署名資格情報は下の機密セクションで除外済み）。
+src-tauri/gen/schemas/
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/.tauri/
+src-tauri/gen/android/build/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/app/.cxx/
+src-tauri/gen/android/local.properties
+# 将来 iOS を足したら gen/apple も成果物だけ無視する。
+src-tauri/gen/apple/
 
 # --- Android / Gradle ---
 .gradle/

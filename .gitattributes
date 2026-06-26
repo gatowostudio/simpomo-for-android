@@ -1,0 +1,4 @@
+# Shell scripts (incl. the git hooks) must stay LF, or Git Bash / sh fails with
+# "bad interpreter" when autocrlf rewrites them to CRLF on checkout.
+scripts/hooks/* text eol=lf
+*.sh text eol=lf
