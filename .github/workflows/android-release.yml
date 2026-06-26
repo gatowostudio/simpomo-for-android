@@ -46,10 +46,12 @@ jobs:
         shell: bash
         run: |
           tag="${GITHUB_REF_NAME#v}"
+          # プレリリース接尾辞（例 0.1.0-rc.1）は落として基準版と比較する（rc タグで試運転できるように）。
+          base="${tag%%-*}"
           pkg="$(node -p "require('./package.json').version")"
-          echo "tag=$tag package.json=$pkg"
-          if [ "$tag" != "$pkg" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $pkg. Bump the version first."
+          echo "tag=$tag base=$base package.json=$pkg"
+          if [ "$base" != "$pkg" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME (base $base) does not match package.json version $pkg. Bump the version first."
             exit 1
           fi
 
