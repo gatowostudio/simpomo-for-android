@@ -33,8 +33,8 @@ permissions:
   contents: write
 
 env:
-  # NDK は Tauri の Android ビルドに必須。追跡した gen/android が要求するバージョンに合わせる。
-  NDK_VERSION: "26.1.10909125"
+  # NDK は Tauri の Android ビルドに必須。ローカルで使用・検証した版に合わせる（gen/android 追跡と整合）。
+  NDK_VERSION: "28.2.13676358"
 
 jobs:
   # タグ(v0.1.0)と中身(package.json の version)の不一致をビルド前に弾く（desktop release.yml と同方針）。
@@ -110,6 +110,10 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          if [ ! -s "$RUNNER_TEMP/release.keystore" ]; then
+            echo "::error::decoded keystore is empty — is the ANDROID_KEYSTORE_BASE64 secret set?"
+            exit 1
+          fi
 
       # 追跡済み build.gradle.kts の signingConfigs が読む場所（gen/android のルート）に署名情報を書く。
       - name: Write keystore.properties

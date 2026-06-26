@@ -25,7 +25,7 @@ Cargo.lock.bak
 
 # --- Tauri generated mobile project (src-tauri/gen) ---
 # gen/android（Gradle プロジェクト）は**追跡する**。landscape 固定・immersive 全画面・署名設定の手当てを
-# ビルドに乗せ、CI から脆い生成テンプレ patch を無くすため（ADR-0003 / development.md / android-release.yml）。
+# ビルドに乗せ、CI から脆い生成テンプレ patch を無くすため（ADR-0004 / development.md / android-release.yml）。
 # 追跡しないのは「生成し直せる成果物・ローカル設定・スキーマ」だけ（署名資格情報は下の機密セクションで除外済み）。
 src-tauri/gen/schemas/
 src-tauri/gen/android/.gradle/
@@ -36,6 +36,8 @@ src-tauri/gen/android/app/.cxx/
 src-tauri/gen/android/local.properties
 # 将来 iOS を足したら gen/apple も成果物だけ無視する。
 src-tauri/gen/apple/
+# iOS は対象外。`tauri icon` が生成する iOS アイコン資産（src-tauri/icons/ios/）も追跡しない。
+src-tauri/icons/ios/
 
 # --- Android / Gradle ---
 .gradle/

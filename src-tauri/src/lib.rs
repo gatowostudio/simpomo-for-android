@@ -213,10 +213,20 @@ fn apply_loaded_settings(app: &AppHandle, state: &SharedState) {
 
 /// tick の間隔は通常 1 秒（下記ループの wait_timeout）。これを大きく超える経過は
 /// バックグラウンド復帰（プロセスは生きていたが実行を絞られていた）を意味し、その間ユーザーは
-/// 作業していない。統計(#22)はこの値を超える catch-up バッチを実績に数えない（水増ししない）。
+/// 作業していない。この値を超える catch-up バッチ（=非ライブ）は:
+/// - 統計(#22)に数えない（水増し防止）
+/// - **境界の通知音/通知も emit しない**（#4。数分前に過ぎた境界の音を復帰時に鳴らさない。
+///   kill/Doze 復帰の restore 側が境界イベントを破棄するのと挙動を統一する）
+/// 状態(snapshot)は常に最新へ更新する（残り時間・フェーズは正しく追いつく）。
 /// 値はモバイルの前景ジャンク（画面回転・GC で数秒スタックしうる）を吸収しつつ、分単位の
-/// バックグラウンド不在は除外する妥協点。なお kill/Doze からの復帰は restore 側で別途除外される。
-const STATS_MAX_LIVE_GAP_SECS: u32 = 15;
+/// バックグラウンド不在は除外する妥協点。
+const MAX_LIVE_GAP_SECS: u32 = 15;
+
+/// この tick の経過が「ライブ」（通常の毎秒進行）か、バックグラウンド一括 catch-up かを判定する。
+/// 純粋関数として切り出し、閾値契約（`<=` か `<` か・値）の取り違えを単体テストで固定する（#4）。
+fn is_live_gap(elapsed_secs: u32) -> bool {
+    elapsed_secs <= MAX_LIVE_GAP_SECS
+}
 
 /// 実時間の駆動（ADR-0002 §3）。Rust 側のバックグラウンドスレッドが **壁時計**（UNIX 秒）の差分で
 /// 実経過秒を算出して `tick` に渡す。デスクトップ版は `Instant`（単調時計）だったが、Android では
@@ -257,18 +267,25 @@ fn spawn_tick_loop(app: AppHandle, state: SharedState) {
             last_unix = now_unix;
             let events = timer.tick(elapsed);
             let snapshot = timer.snapshot();
+            // ライブ tick（通常 1 秒前後）か、バックグラウンド復帰の一括 catch-up かで境界イベントの
+            // 扱いを分ける（#4）。非ライブの境界は数分前に過ぎたものなので、音/通知も統計も出さない
+            // （kill/Doze 復帰の restore 抑制と統一）。状態(snapshot)はどちらでも最新へ更新する。
+            let live = is_live_gap(elapsed);
             // ロック保持中に emit し、コマンド由来の emit と順序が入れ替わらないようにする。
-            emit_events(&app, &events);
+            if live {
+                emit_events(&app, &events);
+            }
             emit_snapshot(&app, snapshot);
             // フェーズ境界で remaining が新フェーズ長に切り替わった対を永続化する（ADR-0002 §3）。
             // 境界間の通常 tick では保存しない（最後に保存した対 + 壁時計差分で現在値を再構成できるため）。
+            // ※非ライブ catch-up でも境界を跨いだなら状態は変わるので保存する（音は出さないが状態は確定）。
             if !events.is_empty() {
                 persist_session(&app, &timer);
             }
-            // 完了数の集計（#22）。境界を跨いだ通常 tick のときだけ。復帰の巨大な
-            // catch-up（elapsed が異常に大きいバッチ）は実際に作業していないので実績に数えない。
+            // 完了数の集計（#22）。境界を跨いだライブ tick のときだけ。復帰の巨大な
+            // catch-up は実際に作業していないので実績に数えない。
             // 保存(I/O)は timer ロックを手放してから行い、ボタン操作を待たせない。
-            if !events.is_empty() && elapsed <= STATS_MAX_LIVE_GAP_SECS {
+            if live && !events.is_empty() {
                 drop(timer);
                 record_stats(&app, &state, &events);
                 timer = state.timer.lock().unwrap();
@@ -311,4 +328,18 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn live_gap_threshold() {
+        // ライブ（毎秒進行・前景ジャンク）: 閾値以下は境界 emit/統計を通す。
+        assert!(is_live_gap(0));
+        assert!(is_live_gap(MAX_LIVE_GAP_SECS));
+        // 非ライブ（バックグラウンド一括 catch-up）: 閾値超は境界 emit/統計を抑制する（#4）。
+        assert!(!is_live_gap(MAX_LIVE_GAP_SECS + 1));
+    }
 }

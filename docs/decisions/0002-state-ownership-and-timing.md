@@ -15,8 +15,10 @@
 `invoke` で送り、状態を `timer-snapshot` イベントで受け取る。値の検証も Rust が権威
 （`AppSettings::sanitized`）で、保存前に必ず正規化する。フロントの clamp は UX 用で信頼境界ではない。
 
-実時間の駆動は Rust 側のバックグラウンドスレッド（`lib.rs: spawn_tick_loop`）が単調時計（`Instant` 差分）で
-行い、非稼働中は条件変数で park して CPU を消費しない。この所有権モデルは Android でも有効なので継承する。
+実時間の駆動は Rust 側のバックグラウンドスレッド（`lib.rs: spawn_tick_loop`）が行い、非稼働中は条件変数で
+park して CPU を消費しない（この所有権モデルは Android でも有効なので継承する）。計時の時計源は
+**§3 で壁時計（UNIX 秒）に統一**した（デスクトップ版の `Instant`（単調時計）は Android でサスペンド中に止まり
+バックグラウンド経過を取りこぼすため）。
 
 ## 2. 設定は「単一画面内のビュー」— 採用（デスクトップ ADR-0002 の反転）
 
@@ -54,8 +56,10 @@ A は中核体験を縮退させ、C は ADR-0001 の「Tauri 流用で軽く」
   （単調時計）だったが、Android では `Instant` がサスペンド中に止まり、バックグラウンド/画面オフ（プロセスは
   生存）から復帰したときに経過を取りこぼす。前景・復元の両方を壁時計に揃えることで、kill されていなくても
   復帰時にその場で経過を取り戻せる（永続 anchor と同一系統）。
-- 統計閾値 `STATS_MAX_LIVE_GAP_SECS` は 5→15 秒に緩め、前景ジャンク（回転/GC）は数え、分単位の
-  バックグラウンド不在は除外する。
+- ライブ/非ライブ閾値 `MAX_LIVE_GAP_SECS`（旧 `STATS_MAX_LIVE_GAP_SECS`）は 5→15 秒。前景ジャンク（回転/GC）は
+  ライブ扱い、分単位のバックグラウンド不在は非ライブとして除外する。**非ライブの境界 tick は統計に数えず、通知音/通知も
+  emit しない**（#4。kill/Doze 復帰の restore 抑制と挙動を統一し、数分前に過ぎた境界の音を復帰時に鳴らさない）。
+  状態(snapshot)はライブ/非ライブどちらでも最新へ更新する。
 - 起動分岐の核は純粋関数 `Timer::restore_for_launch` に切り出して単体テスト（Running catch-up / Paused /
   Idle+autostart / セッション無し / anchor=0 フォールバック / 時計巻き戻し）。`restore` は remaining と
   set_index を設定へクランプ。`persist_session` は anchor=0（壁時計取得失敗）を保存しない。
